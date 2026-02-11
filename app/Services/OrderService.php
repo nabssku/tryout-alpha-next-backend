@@ -92,7 +92,11 @@ class OrderService
         // pastikan product kebaca (biar akses_days ada)
         $order->loadMissing(['product', 'items']);
 
-        $accessDays = $order->product?->access_days; // null = lifetime
+        $accessDays = (int) ($order->product?->access_days ?? 0);
+
+        $endsAt = $accessDays > 0
+            ? $now->copy()->addDays($accessDays)
+            : null;
 
         foreach ($order->items as $it) {
             $packageId = (int) $it->package_id;

@@ -11,6 +11,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $q = Product::query()
+            ->select(['id','type','name','package_id','price','access_days','is_active','created_at'])
             ->with([
                 'package:id,name,type,category_id',
                 'packages:id,name,type,category_id',
@@ -34,7 +35,7 @@ class ProductController extends Controller
             'type' => ['required', 'in:single,bundle'],
             'name' => ['required', 'string', 'max:150'],
             'price' => ['required', 'integer', 'min:0'],
-            'access_days' => ['sometimes','integer','min:1'], // default 30 kalau gak dikirim
+            'access_days' => ['sometimes', 'integer', 'min:0', 'max:3650'], // default 30 kalau gak dikirim
             'is_active' => ['required', 'boolean'],
 
             // SINGLE
@@ -106,7 +107,7 @@ class ProductController extends Controller
             'type' => ['sometimes', 'required', 'in:single,bundle'],
             'name' => ['sometimes', 'required', 'string', 'max:150'],
             'price' => ['sometimes', 'required', 'integer', 'min:0'],
-            'access_days' => ['sometimes','integer','min:1'], // ✅ default tetap existing kalau gak dikirim
+            'access_days' => ['sometimes', 'integer', 'min:0', 'max:3650'], // ✅ default tetap existing kalau gak dikirim
             'is_active' => ['sometimes', 'required', 'boolean'],
 
             // SINGLE
@@ -142,9 +143,7 @@ class ProductController extends Controller
                 ? ($data['package_id'] ?? $product->package_id)
                 : null,
             'price' => $data['price'] ?? $product->price,
-            'access_days' => array_key_exists('access_days', $data)
-                ? (int) $data['access_days']
-                : (int) ($product->access_days ?? 30),
+            'access_days' => $data['access_days'] ?? $product->access_days,
             'is_active' => $data['is_active'] ?? $product->is_active,
         ]);
 

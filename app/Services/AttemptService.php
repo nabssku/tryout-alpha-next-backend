@@ -145,12 +145,7 @@ class AttemptService
             // invalidate cache statistik dashboard user (submitted & expired sama-sama lewat sini)
             Cache::forget("dash:stats:user:{$attempt->user_id}");
             Cache::forget("rank:user:{$attempt->user_id}:pkg:{$attempt->package_id}");
-            Cache::forget("rank:pkg:{$attempt->package_id}:limit:100");
-            Cache::forget("rank:pkg:{$attempt->package_id}:limit:200");
-            Cache::forget("rank:pkg:{$attempt->package_id}:limit:500");
-            Cache::forget("rank:pkg:{$attempt->package_id}:total_users");
-            Cache::forget("rank:pkg:{$attempt->package_id}:user:{$attempt->user_id}");
-            Cache::forget("rank:pkg:{$attempt->package_id}:page:1:per:50");
+            Cache::tags(["rank:pkg:{$attempt->package_id}"])->flush();
 
             return $attempt->fresh();
         });

@@ -37,4 +37,12 @@ class Package extends Model
     {
         return $this->hasMany(Attempt::class);
     }
+
+    public function materials()
+    {
+        return $this->belongsToMany(Material::class, 'package_materials')
+            ->withPivot(['sort_order'])
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
 }

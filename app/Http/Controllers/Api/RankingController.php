@@ -13,10 +13,8 @@ class RankingController extends Controller
     // GET /api/packages/{package}/ranking?page=1&per_page=50
     public function perPackage(Request $request, Package $package)
     {
-        $page = (int) $request->query('page', 1);
+        $page = max(1, (int) $request->query('page', 1));
         $perPage = (int) $request->query('per_page', 50);
-
-        $page = max(1, $page);
         $perPage = max(1, min($perPage, 100));
 
         $offset = ($page - 1) * $perPage;
@@ -44,13 +42,13 @@ class RankingController extends Controller
             ]);
         }
 
+        // gunakan cache tags biar invalidasi gampang
+        $tag = "rank:pkg:{$package->id}";
+
         // =========================
         // Total distinct users (cached)
         // =========================
-        $totalKey = "rank:pkg:{$package->id}:total_users";
-        $totalTtl = 60;
-
-        $totalUsers = (int) Cache::remember($totalKey, $totalTtl, function () use ($package) {
+        $totalUsers = (int) Cache::tags([$tag])->remember("total_users", 60, function () use ($package) {
             $row = DB::selectOne("
                 SELECT COUNT(DISTINCT user_id) AS total
                 FROM attempts
@@ -62,15 +60,12 @@ class RankingController extends Controller
             return (int) ($row->total ?? 0);
         });
 
-        $totalPages = $perPage > 0 ? (int) ceil($totalUsers / $perPage) : 0;
+        $totalPages = $totalUsers > 0 ? (int) ceil($totalUsers / $perPage) : 0;
 
         // =========================
         // Page items (cached)
         // =========================
-        $itemsKey = "rank:pkg:{$package->id}:page:{$page}:per:{$perPage}";
-        $itemsTtl = 60;
-
-        $items = Cache::remember($itemsKey, $itemsTtl, function () use ($package, $perPage, $offset) {
+        $items = Cache::tags([$tag])->remember("page:{$page}:per:{$perPage}", 60, function () use ($package, $perPage, $offset) {
             $rows = DB::select("
                 WITH best_attempts AS (
                     SELECT
@@ -112,17 +107,17 @@ class RankingController extends Controller
         });
 
         // =========================
-        // My rank (global) (cached 30s)
+        // My rank (cached 60s)
         // =========================
         $myRank = null;
         $myScore = null;
         $mySubmittedAt = null;
-        $inTop = null;
+        $inTop = false;
 
         if ($request->user()) {
             $uid = (int) $request->user()->id;
 
-            // cek apakah user ada di page items ini
+            // cek apakah user ada di items page ini
             $mine = $items->firstWhere('user.id', $uid);
             if ($mine) {
                 $myRank = (int) $mine['rank'];
@@ -130,7 +125,7 @@ class RankingController extends Controller
                 $mySubmittedAt = $mine['submitted_at'] ?? null;
                 $inTop = true;
             } else {
-                $my = Cache::remember("rank:pkg:{$package->id}:user:{$uid}", 30, function () use ($uid, $package) {
+                $my = Cache::tags([$tag])->remember("user:{$uid}", 60, function () use ($uid, $package) {
                     return $this->getMyRankForPackage($uid, (int) $package->id);
                 });
 
@@ -141,6 +136,8 @@ class RankingController extends Controller
                     $inTop = false;
                 } else {
                     $myRank = null;
+                    $myScore = null;
+                    $mySubmittedAt = null;
                     $inTop = false;
                 }
             }
@@ -166,11 +163,6 @@ class RankingController extends Controller
         ]);
     }
 
-    /**
-     * Hitung rank user untuk package, walau di luar page/per_page.
-     * - best attempt per user
-     * - tie-breaker: submitted_at lebih cepat menang
-     */
     private function getMyRankForPackage(int $userId, int $packageId): ?array
     {
         $myBest = DB::selectOne("

@@ -27,6 +27,11 @@ use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\Admin\AdminOrderController;
 use App\Http\Controllers\Api\UserPackageController;
+use App\Http\Controllers\Api\UserMaterialController;
+use App\Http\Controllers\Api\Admin\AdminMaterialController;
+use App\Http\Controllers\Api\Admin\AdminMaterialPartController;
+use App\Http\Controllers\Api\Admin\AdminPackageMaterialController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -107,6 +112,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // user packages
     Route::get('/user/packages', [UserPackageController::class, 'index']);
+
+    // user materials
+    Route::get('/materials', [UserMaterialController::class, 'index']);
+    Route::get('/materials/{material}', [UserMaterialController::class, 'show']);
 });
 
 /*
@@ -163,4 +172,14 @@ Route::middleware(['auth:sanctum', 'admin'])
         // order
         Route::get('/orders', [AdminOrderController::class, 'index']);
         Route::post('/orders/{order}/mark-paid', [AdminOrderController::class, 'markPaid']);
+
+        // materials
+        Route::apiResource('materials', AdminMaterialController::class);
+        Route::get('materials/{material}/parts', [AdminMaterialPartController::class, 'index']);
+        Route::post('materials/{material}/parts', [AdminMaterialPartController::class, 'store']);
+        Route::patch('materials/{material}/parts/{part}', [AdminMaterialPartController::class, 'update']);
+        Route::delete('materials/{material}/parts/{part}', [AdminMaterialPartController::class, 'destroy']);
+        // package-materials
+        Route::get('packages/{package}/materials', [AdminPackageMaterialController::class, 'index']);
+        Route::put('packages/{package}/materials', [AdminPackageMaterialController::class, 'sync']);
     });
