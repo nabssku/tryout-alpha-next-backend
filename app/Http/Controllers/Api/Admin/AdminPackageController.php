@@ -13,6 +13,7 @@ class AdminPackageController extends Controller
         $q = Package::query()
             ->with('category:id,name')
             ->withCount('questions')
+            ->withCount(['materials as material_count'])
             ->when($request->type, fn($qq) => $qq->where('type', $request->type))
             ->when($request->category_id, fn($qq) => $qq->where('category_id', $request->category_id))
             ->orderBy('id','desc')
@@ -41,6 +42,7 @@ class AdminPackageController extends Controller
     {
         $package->load('category:id,name');
         $package->loadCount('questions');
+        $package->loadCount(['materials as material_count']);
 
         return response()->json(['success' => true, 'data' => $package]);
     }
